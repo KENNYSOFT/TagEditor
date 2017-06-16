@@ -25,6 +25,8 @@ namespace TagEditor
             taskbarManager = TaskbarManager.Instance;
         }
 
+        public static string[] pos = { "NNG", "NNP", "NNB", "NP", "NR", "VV", "VA", "VX", "VCP", "MM", "MAG", "MAJ", "IC", "JKS", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "EP", "EM", "ETN", "ETM", "XPN", "XSN", "XSA", "SF", "SP", "SS", "SE", "SO", "SL", "SH", "SW", "SN", "NA" };
+
         private string filePath, newFilePath;
         private SQLiteConnection conn;
         private int now = -1, next = -1, prev = -1;
@@ -69,14 +71,14 @@ namespace TagEditor
             List<string> resultList = new List<string>();
             foreach (string s in change.Split(new string[] { "+/SW" }, StringSplitOptions.None))
             {
-                resultList.AddRange(s.Split(new string[] { "+" }, StringSplitOptions.RemoveEmptyEntries));
+                resultList.AddRange(s.Split(new string[] { "+" }, StringSplitOptions.None));
                 resultList.Add("+/SW");
             }
             resultList.RemoveAt(resultList.Count - 1);
             foreach (string s in resultList)
             {
                 if (s == "//SP") continue;
-                if (s.Count(c => c == '/') != 1 || s.Contains(' ') || s.Contains('\t')) return null;
+                if (s.Count(c => c == '/') != 1 || s.Contains(' ') || s.Contains('\t') || !pos.Contains(s.Split(new string[] { "/" }, StringSplitOptions.None).Last())) return null;
             }
             return resultList;
         }

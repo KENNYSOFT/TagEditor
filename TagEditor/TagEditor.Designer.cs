@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TagEditor));
             this.button1 = new System.Windows.Forms.Button();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
@@ -57,6 +58,7 @@
             this.checkBox2 = new System.Windows.Forms.CheckBox();
             this.checkBox3 = new System.Windows.Forms.CheckBox();
             this.checkBox4 = new System.Windows.Forms.CheckBox();
+            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.SuspendLayout();
             // 
             // button1
@@ -103,6 +105,7 @@
             this.label1.Size = new System.Drawing.Size(200, 12);
             this.label1.TabIndex = 3;
             this.label1.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.label1.MouseHover += new System.EventHandler(this.label1_MouseHover);
             // 
             // label2
             // 
@@ -111,6 +114,7 @@
             this.label2.Size = new System.Drawing.Size(200, 12);
             this.label2.TabIndex = 5;
             this.label2.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.label2.MouseHover += new System.EventHandler(this.label2_MouseHover);
             // 
             // label3
             // 
@@ -119,6 +123,7 @@
             this.label3.Size = new System.Drawing.Size(200, 12);
             this.label3.TabIndex = 6;
             this.label3.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.label3.MouseHover += new System.EventHandler(this.label3_MouseHover);
             // 
             // button4
             // 
@@ -415,6 +420,7 @@
         private System.Windows.Forms.CheckBox checkBox2;
         private System.Windows.Forms.CheckBox checkBox3;
         private System.Windows.Forms.CheckBox checkBox4;
+        private System.Windows.Forms.ToolTip toolTip1;
     }
 }
 

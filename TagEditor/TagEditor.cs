@@ -35,7 +35,7 @@ namespace TagEditor
         {
             SaveFileDialog sfd = new SaveFileDialog();
             sfd.Title = "파일 변환";
-            sfd.FileName = getFileName(filePath).Replace(".txt", ".db");
+            sfd.FileName = getFileName(filePath).Replace(getFileName(filePath).Split(new string[] { "." }, StringSplitOptions.None).Last(), "db");
             sfd.Filter = "SQLite DB 파일 (*.db)|*.db";
             DialogResult dr = sfd.ShowDialog();
             if (dr == DialogResult.OK) return sfd.FileName;
@@ -47,7 +47,7 @@ namespace TagEditor
             SaveFileDialog sfd = new SaveFileDialog();
             sfd.Title = "파일 저장";
             sfd.FileName = getFileName(filePath).Replace(".db", ".txt");
-            sfd.Filter = "텍스트 파일 (*.txt)|*.txt|모든 파일 (*.*)|*.*";
+            sfd.Filter = "텍스트 파일 (*.txt)|*.txt|태그 파일 (*.tag)|*.tag|모든 파일 (*.*)|*.*";
             DialogResult dr = sfd.ShowDialog();
             if (dr == DialogResult.OK) return sfd.FileName;
             else return null;
@@ -94,8 +94,15 @@ namespace TagEditor
 
         public static string getMidTag(string leftTag, string rightTag)
         {
-            int leftNum = Convert.ToInt32(leftTag.Substring(leftTag.LastIndexOf("-") + 1)), rightNum = Convert.ToInt32(rightTag.Substring(rightTag.LastIndexOf("-") + 1));
-            return rightTag.Replace(rightNum.ToString(), ((leftNum + rightNum) / 2).ToString());
+            try
+            {
+                int leftNum = Convert.ToInt32(leftTag.Substring(leftTag.LastIndexOf("-") + 1)), rightNum = Convert.ToInt32(rightTag.Substring(rightTag.LastIndexOf("-") + 1));
+                return rightTag.Replace(rightNum.ToString(), ((leftNum + rightNum) / 2).ToString());
+            }
+            catch
+            {
+                return leftTag;
+            }
         }
 
         public void makeTitle(bool opened, bool changed)
@@ -148,7 +155,7 @@ namespace TagEditor
             }
             else
             {
-                MessageBox.Show("빈 단어가 있습니다.", "적용", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("빈 어절이 있습니다.", "적용", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
         }
@@ -439,7 +446,7 @@ namespace TagEditor
             OpenFileDialog ofd = new OpenFileDialog();
             ofd.Title = "파일 열기";
             ofd.FileName = "";
-            ofd.Filter = "SQLite DB 파일 (*.db)|*.db|텍스트 파일 (*.txt)|*.txt|모든 파일 (*.*)|*.*";
+            ofd.Filter = "SQLite DB 파일 (*.db)|*.db|텍스트 파일 (*.txt)|*.txt|태그 파일 (*.tag)|*.tag|모든 파일 (*.*)|*.*";
             if (ofd.ShowDialog() == DialogResult.OK)
             {
                 setOpened(false);
@@ -458,19 +465,27 @@ namespace TagEditor
                 {
                     if (MessageBox.Show("SQLite DB 파일로 변환하시겠습니까?", "파일 변환", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) == DialogResult.OK && (newFilePath = getDBFilePath(filePath)) != null)
                     {
+                        Encoding encoding;
+                        if (MessageBox.Show("UTF-8 파일이면 '예', 아니면 '아니오'를 눌러주세요.", "파일 변환", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) encoding = Encoding.UTF8;
+                        else encoding = Encoding.Default;
+
+                        int columns;
+                        if (MessageBox.Show("태그가 있는 파일이면 '예', 아니면 '아니오'를 눌러주세요.", "파일 변환", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) columns = 3;
+                        else columns = 2;
+
                         File.Delete(newFilePath);
 
                         conn = new SQLiteConnection(@"Data Source=" + newFilePath);
                         conn.Open();
 
-                        executeSQLiteCommand("CREATE TABLE IF NOT EXISTS tageditor(_id INTEGER PRIMARY KEY, istagged BOOLEAN, tag VARCHAR(20) UNIQUE, word VARCHAR(-1), result VARCHAR(-1), content VARCHAR(-1));");
+                        executeSQLiteCommand("CREATE TABLE IF NOT EXISTS tageditor(_id INTEGER PRIMARY KEY, istagged BOOLEAN, tag VARCHAR(-1), word VARCHAR(-1), result VARCHAR(-1), content VARCHAR(-1));");
 
                         taskbarManager.SetProgressState(TaskbarProgressBarState.Indeterminate);
                         int lines = File.ReadLines(filePath).Count(), now = 0;
                         progressBar1.Minimum = 0;
                         progressBar1.Maximum = lines;
 
-                        using (StreamReader sr = new StreamReader(filePath, Encoding.UTF8))
+                        using (StreamReader sr = new StreamReader(filePath, encoding))
                         {
                             taskbarManager.SetProgressState(TaskbarProgressBarState.Normal);
                             string line;
@@ -480,8 +495,12 @@ namespace TagEditor
                                 now++;
                                 line = line.Replace("'", "''");
                                 string[] col = line.Split(new string[] { "\t" }, StringSplitOptions.None);
-                                if (!line.StartsWith("<======") && col.Length == 3 && col[0].Length > 0 && col[1].Length > 0 && col[2].Length > 0) rowList.Add("(" + (now * 10) + ", 1, '" + String.Join("', '", col) + "', NULL)");
-                                else rowList.Add("(" + (now * 10) + ", 0, NULL, NULL, NULL, '" + line + "')");
+                                if (!line.StartsWith("<======") && col.Length == columns && col.Count(s => s.Length != 0) == columns)
+                                {
+                                    if (columns == 3) rowList.Add("(" + (now * 100) + ", 1, '" + String.Join("', '", col) + "', NULL)");
+                                    if (columns == 2) rowList.Add("(" + (now * 100) + ", 1, '', '" + String.Join("', '", col) + "', NULL)");
+                                }
+                                else rowList.Add("(" + (now * 100) + ", 0, NULL, NULL, NULL, '" + line + "')");
                                 if (rowList.Count == 100000)
                                 {
                                     executeSQLiteCommand("INSERT INTO tageditor(_id, istagged, tag, word, result, content) VALUES" + String.Join(", ", rowList) + ";");
@@ -621,6 +640,21 @@ namespace TagEditor
             if (e.KeyCode == Keys.Enter) button3_Click(this, e);
         }
 
+        private void label1_MouseHover(object sender, EventArgs e)
+        {
+            toolTip1.SetToolTip(label1, label1.Text);
+        }
+
+        private void label2_MouseHover(object sender, EventArgs e)
+        {
+            toolTip1.SetToolTip(label2, label2.Text);
+        }
+
+        private void label3_MouseHover(object sender, EventArgs e)
+        {
+            toolTip1.SetToolTip(label3, label3.Text);
+        }
+
         private void label4_Click(object sender, EventArgs e)
         {
             if (now != -1 && !changed)
@@ -676,22 +710,14 @@ namespace TagEditor
                     return;
                 }
             }
-            if (getNextRowNumber(now) == now + 1 || getMidTag(label1.Text, label2.Text) == label1.Text)
+            if (getNextRowNumber(now) == now + 1)
             {
                 if (MessageBox.Show("DB 구조 업데이트가 필요합니다. 진행하시겠습니까?", "삽입", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) == DialogResult.OK)
                 {
                     executeSQLiteCommand("CREATE TEMPORARY TABLE tmp(_newid INTEGER NOT NULL PRIMARY KEY, _id INTEGER UNIQUE);\n"
                         + "UPDATE tageditor SET _id = -_id;\n"
                         + "INSERT INTO tmp(_id) SELECT _id FROM tageditor ORDER BY _id DESC;\n"
-                        + "UPDATE tageditor SET _id = (SELECT _newid * 10 FROM tmp WHERE tmp._id = tageditor._id);\n"
-                        + "DROP TABLE tmp;\n"
-                        + "VACUUM;");
-
-                    string file = label1.Text.Split(new string[] { "-" }, StringSplitOptions.None)[0];
-                    executeSQLiteCommand("CREATE TEMPORARY TABLE tmp(newtag INTEGER NOT NULL PRIMARY KEY, tag VARCHAR(20) UNIQUE);\n"
-                        + "UPDATE tageditor SET tag = '~' || tag WHERE tag LIKE '" + file + "%';\n"
-                        + "INSERT INTO tmp(tag) SELECT tag FROM tageditor WHERE tag LIKE '~" + file + "%' ORDER BY tag ASC;\n"
-                        + "UPDATE tageditor SET tag = (SELECT '" + file + "-' || SUBSTR('0000000' || (newtag * 10), -7, 7) FROM tmp WHERE tmp.tag = tageditor.tag) WHERE tag LIKE '~" + file + "%';\n"
+                        + "UPDATE tageditor SET _id = (SELECT _newid * 100 FROM tmp WHERE tmp._id = tageditor._id);\n"
                         + "DROP TABLE tmp;\n"
                         + "VACUUM;");
 
@@ -723,22 +749,14 @@ namespace TagEditor
                     return;
                 }
             }
-            if (getPreviousRowNumber(now) == now - 1 || getMidTag(label3.Text, label1.Text) == label3.Text)
+            if (getPreviousRowNumber(now) == now - 1)
             {
                 if (MessageBox.Show("DB 구조 업데이트가 필요합니다. 진행하시겠습니까?", "삽입", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) == DialogResult.OK)
                 {
                     executeSQLiteCommand("CREATE TEMPORARY TABLE tmp(_newid INTEGER NOT NULL PRIMARY KEY, _id INTEGER UNIQUE);\n"
                         + "UPDATE tageditor SET _id = -_id;\n"
                         + "INSERT INTO tmp(_id) SELECT _id FROM tageditor ORDER BY _id DESC;\n"
-                        + "UPDATE tageditor SET _id = (SELECT _newid * 10 FROM tmp WHERE tmp._id = tageditor._id);\n"
-                        + "DROP TABLE tmp;\n"
-                        + "VACUUM;");
-
-                    string file = label1.Text.Split(new string[] { "-" }, StringSplitOptions.None)[0];
-                    executeSQLiteCommand("CREATE TEMPORARY TABLE tmp(newtag INTEGER NOT NULL PRIMARY KEY, tag VARCHAR(20) UNIQUE);\n"
-                        + "UPDATE tageditor SET tag = '~' || tag WHERE tag LIKE '" + file + "%';\n"
-                        + "INSERT INTO tmp(tag) SELECT tag FROM tageditor WHERE tag LIKE '~" + file + "%' ORDER BY tag ASC;\n"
-                        + "UPDATE tageditor SET tag = (SELECT '" + file + "-' || SUBSTR('0000000' || (newtag * 10), -7, 7) FROM tmp WHERE tmp.tag = tageditor.tag) WHERE tag LIKE '~" + file + "%';\n"
+                        + "UPDATE tageditor SET _id = (SELECT _newid * 100 FROM tmp WHERE tmp._id = tageditor._id);\n"
                         + "DROP TABLE tmp;\n"
                         + "VACUUM;");
 
